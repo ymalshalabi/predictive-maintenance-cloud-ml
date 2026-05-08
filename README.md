@@ -53,8 +53,3 @@ git clone -b phase-2 https://github.com/ymalshalabi/predictive-maintenance-cloud
 ### Academic Institution: King Fahd University of Petroleum and Minerals (KFUPM)
 
 
-
-
-Dashboard Latency: Verified sub-400ms end-to-end response time.
-
-Model Accuracy: High-fidelity anomaly detection with minimized reconstruction error on unseen cloud noise.
