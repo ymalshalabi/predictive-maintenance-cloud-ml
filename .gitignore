@@ -1,0 +1,5 @@
+*.zip
+*.log
+__pycache__/
+venv/
+yasmin-project-final.zip
