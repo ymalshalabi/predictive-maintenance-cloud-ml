@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Node Monitoring Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 70px;
+        }
+        /* Light blue navbar */
+        .navbar {
+            background-color: #6cb2eb !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-weight: 500;
+            color: #fff !important;
+        }
+        .nav-link {
+            color: rgba(255,255,255,0.9) !important;
+        }
+        .nav-link:hover {
+            color: #fff !important;
+        }
+        .container {
+            margin-top: 30px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .chart-card:hover {
+            transform: translateY(-5px);
+        }
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .chart-title i {
+            margin-right: 6px;
+            color: #0d6efd;
+        }
+        canvas {
+            max-height: 180px;
+            width: 100% !important;
+        }
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 0;
+        }
+        .table thead {
+            background-color: #343a40;
+            color: white;
+        }
+        .table th {
+            font-weight: 500;
+        }
+        .badge-active {
+            background-color: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        .badge-critical {
+            background-color: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        .node-link {
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .node-link.active {
+            color: #007bff;
+        }
+        .node-link.active:hover {
+            text-decoration: underline;
+        }
+        .node-link.critical {
+            color: #6c757d;
+            pointer-events: none;
+            cursor: default;
+            text-decoration: none;
+        }
+        .last-updated {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: 10px;
+            text-align: right;
+        }
+        .loading-spinner {
+            text-align: center;
+            padding: 20px;
+        }
+        .status-icon {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar (light blue) -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background-color: #6cb2eb;">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-server me-2"></i>Node Monitor
+            </a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-info-circle me-1"></i>Training Info</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Three Distribution Graphs -->
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <i class="fas fa-chart-pie"></i> Donut Distribution
+                    </div>
+                    <canvas id="donutChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <i class="fas fa-chart-bar"></i> Bar Distribution
+                    </div>
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <i class="fas fa-chart-pie"></i> Pie Distribution
+                    </div>
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Node Table Card -->
+        <div class="table-card">
+            <div class="chart-title">
+                <i class="fas fa-network-wired"></i> Monitored Nodes
+            </div>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Status</th>
+                        <th>Health Status</th>
+                    </tr>
+                </thead>
+                <tbody id="nodeTableBody">
+                    <!-- rows will be inserted dynamically -->
+                </tbody>
+            </table>
+            <div id="loadingSpinner" class="loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            <div class="last-updated">
+                Last updated: <span id="updateTime">-</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM elements
+        const tableBody = document.getElementById('nodeTableBody');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const updateTimeSpan = document.getElementById('updateTime');
+        const donutCtx = document.getElementById('donutChart').getContext('2d');
+        const barCtx = document.getElementById('barChart').getContext('2d');
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+
+        // Chart instances
+        let donutChart, barChart, pieChart;
+
+        // Fetch node statuses from the API and update table and charts
+        async function fetchNodeStatus() {
+            try {
+                const response = await fetch('/api/nodes');
+                const nodes = await response.json();
+
+                // Hide spinner
+                loadingSpinner.style.display = 'none';
+
+                let activeCount = 0;
+                let criticalCount = 0;
+
+                // Build table rows
+                let html = '';
+                nodes.forEach(node => {
+                    const statusClass = node.status === 'active' ? 'badge-active' : 'badge-critical';
+                    const statusText = node.status === 'active' ? 'Active' : 'Critical';
+                    const linkClass = node.status === 'active' ? 'active' : 'critical';
+                    const healthText = node.status === 'active' ? 'Healthy' : 'Requires Maintenance';
+                    const telemetryUrl = `http://${node.ip}:5000/telemetry`;
+
+                    // Icons for status and health columns
+                    const statusIcon = node.status === 'active' 
+                        ? '<i class="fas fa-check-circle status-icon"></i>' 
+                        : '<i class="fas fa-exclamation-triangle status-icon"></i>';
+                    const healthIcon = node.status === 'active' 
+                        ? '<i class="fas fa-heartbeat status-icon"></i>' 
+                        : '<i class="fas fa-tools status-icon"></i>';
+
+                    // Count for charts
+                    if (node.status === 'active') {
+                        activeCount++;
+                    } else {
+                        criticalCount++;
+                    }
+
+                    // Main row (no click handlers)
+                    html += `<tr>
+                        <td>
+                            <a href="${telemetryUrl}" class="node-link ${linkClass}" target="_blank">
+                                ${node.ip}
+                            </a>
+                        </td>
+                        <td><span class="${statusClass}">${statusIcon} ${statusText}</span></td>
+                        <td><span class="${statusClass}">${healthIcon} ${healthText}</span></td>
+                    </tr>`;
+                });
+                tableBody.innerHTML = html;
+
+                // Update all three charts
+                updateDistributionCharts(activeCount, criticalCount);
+
+                // Update last updated time
+                const now = new Date();
+                updateTimeSpan.textContent = now.toLocaleTimeString();
+            } catch (error) {
+                console.error('Failed to fetch node status:', error);
+                loadingSpinner.innerHTML = '<div class="alert alert-danger">Failed to load node data.</div>';
+            }
+        }
+
+        // Update all distribution charts
+        function updateDistributionCharts(active, critical) {
+            const data = [active, critical];
+            const labels = ['Active', 'Critical'];
+            const colors = ['#28a745', '#dc3545'];
+
+            // Donut
+            if (donutChart) {
+                donutChart.data.datasets[0].data = data;
+                donutChart.update();
+            } else {
+                donutChart = new Chart(donutCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            // Bar
+            if (barChart) {
+                barChart.data.datasets[0].data = data;
+                barChart.update();
+            } else {
+                barChart = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: colors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+            }
+
+            // Pie
+            if (pieChart) {
+                pieChart.data.datasets[0].data = data;
+                pieChart.update();
+            } else {
+                pieChart = new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+        }
+
+        // Initial fetch
+        fetchNodeStatus();
+
+        // Auto-refresh every 10 seconds
+        setInterval(fetchNodeStatus, 10000);
+    </script>
+</body>
+</html>
